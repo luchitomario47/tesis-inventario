@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block body %}
+<div class="form-group">
+    <div class="input-group mt-2">
+        <span class="input-group-text">Fecha</span>
+        <input type="date" id="fechaInput" class="form-control" readonly />
+    </div>
+    <div class="input-group mt-2">
+        <span class="input-group-text">Tienda</span>
+        <select id="tiendaSelect" name="tienda" class="form-control">
+            <option value="">-- Selecciona una tienda --</option>
+            {% for tienda in Tiendas|dictsort:"numero_rtpro" %}
+                {% if tienda.numero_rtpro != "0" and tienda.numero_rtpro != 0 %}
+                    <option value="{{ tienda.numero_rtpro }}">{{ tienda.numero_rtpro|add:' - ' }}{{ tienda.nombre_tienda }}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+    </div>
+    <div class="input-group mt-2">
+        <span class="input-group-text">Zona</span>
+        <input type="number" id="zonaInput" class="form-control" placeholder="Zona" />
+    </div>
+    <div class="input-group mt-2">
+        <span class="input-group-text">Cantidad</span>
+        <input type="number" id="cantidadInput" class="form-control" value="1" />
+    </div>
+    <div class="input-group mt-2">
+        <span class="input-group-text">SKU</span>
+        <input type="text" id="skuInput" class="form-control" placeholder="SKU" />
+    </div>
+    <button class="btn btn-success mt-3" id="agregarBtn">Agregar</button>
+</div>
+
+<!-- Tabla Inventariado -->
+<h3>Inventariado</h3>
+<div class="table-container">
+    <table class="table table-striped mt-3">
+        <thead>
+            <tr>
+                <th>SKU</th>
+                <th>Modelo</th>
+                <th>Zona</th>
+                <th>Cantidad</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody id="inventarioBody">
+            <!-- Aquí se agregarán las filas de inventario -->
+        </tbody>
+    </table>
+</div>
+
+<!-- Botón Enviar -->
+<button class="btn btn-primary mt-3" id="enviarBtn">Enviar</button>
+
+<link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}">
+<script src="{% static 'js/script.js' %}"></script>
+
+{% endblock %}
