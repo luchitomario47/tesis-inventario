@@ -57,26 +57,78 @@ function agregarItem() {
         tienda.disabled = true;
         zona.disabled = true;
     } else {
-        alert('Por favor, completa todos los campos');
+        // Usar SweetAlert en lugar de alert
+        Swal.fire({
+            icon: 'warning',
+            title: 'Campos incompletos',
+            text: 'Por favor, completa todos los campos.',
+            confirmButtonText: 'Aceptar'
+        });
     }
 }
 
+
 // Función para enviar el inventario
 document.getElementById('enviarBtn').addEventListener('click', function () {
-    const inventario = obtenerInventario();
-    console.log('Enviar inventario:', inventario);
-    
-    // Aquí puedes enviar el inventario al servidor con AJAX o fetch()
-    // Luego de enviar, limpiar localStorage, tabla e inputs
-    localStorage.removeItem('inventario');
-    renderizarInventario();
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: 'Esta acción enviará la información a la base de datos. Este proceso es irreversible. ¿Quieres continuar?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, enviar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const inventario = obtenerInventario();
+            //console.log('Enviar inventario:', inventario);
 
-    // Limpiar los campos y desbloquear Tienda y Zona
-    document.getElementById('tiendaSelect').disabled = false;
-    document.getElementById('zonaInput').disabled = false;
-    document.getElementById('skuInput').value = '';
-    document.getElementById('cantidadInput').value = '';
+            // Después de enviar, limpiar localStorage, tabla e inputs
+            localStorage.removeItem('inventario');
+            renderizarInventario();
+
+            // Limpiar los campos y desbloquear Tienda y Zona
+            document.getElementById('tiendaSelect').disabled = false;
+            document.getElementById('zonaInput').disabled = false;
+            document.getElementById('skuInput').value = '';
+            document.getElementById('cantidadInput').disabled = true;
+        } else {
+            console.log('Acción de envío cancelada');
+        }
+    });
 });
+
+
+// Función Boton Limpiar
+document.getElementById('limpiarBtn').addEventListener('click', function() {
+    Swal.fire({
+        title: '¿Está seguro que quiere limpiar todo?',
+        text: "¡Esta acción no se puede deshacer!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Sí, limpiar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            localStorage.removeItem('inventario');
+            renderizarInventario();
+
+            document.getElementById('tiendaSelect').disabled = false;
+            document.getElementById('zonaInput').disabled = false;
+            document.getElementById('skuInput').value = '';
+            document.getElementById('cantidadInput').disabled = true;
+
+            Swal.fire(
+                'Limpio',
+                'El inventario ha sido limpiado.',
+                'success'
+            );
+        }
+    });
+});
+
 
 // Inicializar la tabla de inventario y la fecha cuando se cargue la página
 document.addEventListener('DOMContentLoaded', function () {
@@ -85,12 +137,19 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // Escuchar la tecla Enter en el campo SKU para agregar el elemento
+// Escuchar el evento de presionar la tecla Enter en el campo SKU
 document.getElementById('skuInput').addEventListener('keypress', function (event) {
     if (event.key === 'Enter') {
-        event.preventDefault(); // Evitar el comportamiento por defecto
+        event.preventDefault();
         agregarItem(); // Llamar a la función para agregar el item
     }
 });
+
+// Escuchar el evento de clic en el botón Agregar
+document.getElementById('agregarBtn').addEventListener('click', function () {
+    agregarItem(); // Llamar a la función para agregar el item
+});
+
 
 // Función para establecer la fecha actual en el campo de entrada
 function establecerFechaActual() {

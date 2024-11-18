@@ -23,7 +23,7 @@
     </div>
     <div class="input-group mt-2">
         <span class="input-group-text">Cantidad</span>
-        <input type="number" id="cantidadInput" class="form-control" value="1" />
+        <input type="number" id="cantidadInput" class="form-control" value="1" disabled />
     </div>
     <div class="input-group mt-2">
         <span class="input-group-text">SKU</span>
@@ -54,7 +54,14 @@
 <!-- Botón Enviar -->
 <button class="btn btn-primary mt-3" id="enviarBtn">Enviar</button>
 
+<!-- Botón Enviar -->
+
+<button class="btn btn-danger mt-3" id="limpiarBtn">Limpiar</button>
+
 <link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}">
 <script src="{% static 'js/script.js' %}"></script>
+<!-- SweetAlert2 CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 
 {% endblock %}
