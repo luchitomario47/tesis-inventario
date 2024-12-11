@@ -66,7 +66,7 @@ function renderizarInventario() {
         const row = `
             <tr>
                 <td>${item.sku}</td>
-                <td>${item.Modelo}</td>
+                <td>${item.modelo}</td>
                 <td>${item.zona}</td>
                 <td>${item.cantidad}</td>
                 <td>${item.fecha}</td>
@@ -112,6 +112,8 @@ function agregarItem() {
     const zona = document.getElementById('zonaInput');
     const cantidad = document.getElementById('cantidadInput');
     const sku = document.getElementById('skuInput');
+    const username = 'lperez';
+    const tiendaSelect = document.getElementById('tiendaSelect');
 
     // Crear la cabecera solo si no existe en localStorage
     if (!localStorage.getItem('invCab')) {
@@ -129,9 +131,11 @@ function agregarItem() {
         const nuevoItem = {
             idInventario: idInventario,
             sku: sku.value,
-            Modelo: sku.value.slice(0, 9), // Extraer los primeros 9 caracteres del SKU
+            modelo: sku.value.slice(0, 9), // Extraer los primeros 9 caracteres del SKU
             zona: zona.value,
             cantidad: cantidad.value,
+            username: username,
+            store: tiendaSelect.value,
             fecha: new Date().toLocaleString() // Fecha y hora actual
         };
 
@@ -251,6 +255,87 @@ document.getElementById('limpiarBtn').addEventListener('click', function () {
         }
     });
 });
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.getElementById('enviarBtn').addEventListener('click', function () {
+    actualizarZonaCabecera();
+
+    const invCab = JSON.parse(localStorage.getItem('invCab'));
+    const inventario = obtenerInventario();
+
+    if (!invCab || !invCab.zona) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Datos incompletos',
+            text: 'Por favor, asegúrate de completar la zona antes de enviar.',
+            confirmButtonText: 'Aceptar'
+        });
+        return;
+    }
+
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: 'Esta acción enviará la información a la base de datos. Este proceso es irreversible. ¿Quieres continuar?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, enviar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            console.log('Enviar cabecera:', invCab);
+            console.log('Enviar inventario:', inventario);
+            fetch('http://127.0.0.1:8000/guardarDatos/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ invCab, inventario })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error en la solicitud');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Success:', data);
+                Swal.fire('Enviado', 'El inventario ha sido enviado correctamente.', 'success');
+                localStorage.removeItem('inventario');
+                localStorage.removeItem('invCab');
+                renderizarInventario();
+                document.getElementById('tiendaSelect').disabled = false;
+                document.getElementById('zonaInput').disabled = false;
+                document.getElementById('tiendaSelect').value = '';
+                document.getElementById('zonaInput').value = '';
+                document.getElementById('skuInput').value = '';
+                document.getElementById('cantidadInput').disabled = true;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire('Error', 'Hubo un problema al enviar el inventario.', 'error');
+            });
+        }
+    });
+});
+
+
+
 
 // Escuchar el evento de clic en el botón Agregar
 document.getElementById('agregarBtn').addEventListener('click', function () {
