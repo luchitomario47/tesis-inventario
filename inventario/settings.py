@@ -138,18 +138,4 @@ STATICFILES_DIRS = [
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOW_METHODS = [
-    'GET',
-    'POST',
-    'OPTIONS',  # Asegura que OPTIONS esté permitido
-    'PUT',
-    'DELETE',
-]
-
-CORS_ALLOW_HEADERS = [
-    'content-type',
-    'X-CSRFToken',
-    'Authorization',  # Si usas autenticación
-]
-
-CORS_ALLOW_CREDENTIALS = True  # Si necesitas pasar cookies o credenciales
+CORS_ALLOW_ALL_ORIGINS = True

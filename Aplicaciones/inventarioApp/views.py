@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render, get_list_or_404
 import json
 from .models import InvCab, InvDet, Datos  # Asegúrate de importar tu modelo Datos
 from django.http import JsonResponse
@@ -12,6 +12,15 @@ def home(request):
         "Inventarios": cabeceras,
         "Tiendas": tiendas  # Agregar tiendas activas al contexto
     })
+
+def reportes(request):
+    # Obtener los datos de los inventarios
+    return render(request, 'reportes.html')
+
+def reportes(request):
+    # Obtener todos los registros de InvCab
+    inventarios = InvCab.objects.all()
+    return render(request, 'reportes.html', {'inventarios': inventarios})
 
 @csrf_exempt
 def guardarDatos(request):
@@ -74,3 +83,21 @@ def guardarDatos(request):
 
     # Responder si el método HTTP no es POST
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
+
+def editar_inventario(request, id):
+    # Lógica para editar el inventario
+    pass
+
+def eliminar_inventario(request, id):
+    # Lógica para eliminar el inventario
+    try:
+        inventario = InvCab.objects.get(id=id)
+        inventario.delete()
+        return JsonResponse({'status': 'success'}, status=200)
+    except InvCab.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Inventario no encontrado'}, status=404)
+
+def reporte_detalles(request, idInventario):
+    inventario = get_object_or_404(InvCab, idInventario=idInventario)
+    detalles = InvDet.objects.filter(idInventario=inventario)
+    return render(request, 'inventarioApp/reporte_detalles.html', {'inventario': inventario, 'detalles': detalles})

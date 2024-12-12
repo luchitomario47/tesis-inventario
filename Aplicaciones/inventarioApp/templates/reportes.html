@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block body %}
+<head>
+    <!-- Agregar FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+</head>
+
+<h1 class="my-4">Reportes de Inventarios</h1>
+
+<!-- Tabla con clases de Bootstrap -->
+<table class="table table-striped table-bordered table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>idInventario</th>
+            <th>Store</th>
+            <th>Fecha</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for inventario in inventarios %}
+        <tr>
+            <td>{{ inventario.idInventario }}</td>
+            <td>{{ inventario.store }}</td>
+            <td>{{ inventario.date_created }}</td>
+            <td>
+                <!-- Botón Detalle -->
+                <button class="btn btn-warning btn-sm" onclick="window.location.href='{% url 'reporte_detalles' inventario.idInventario %}'">
+                    <i class="fas fa-edit"></i> Detalle
+                </button>
+                <!-- Botón Eliminar -->
+                <button class="btn btn-danger btn-sm" onclick="eliminar({{ inventario.id }})">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </td>            
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+    
+{% endblock %}
