@@ -364,3 +364,4 @@ function actualizarContador() {
 }
 const inventario = obtenerInventario();
 console.log(inventario.length);
+

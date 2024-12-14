@@ -6,4 +6,4 @@ urlpatterns = [
     path('guardarDatos/', views.guardarDatos, name='guardarDatos'),
     path('reportes/', views.reportes, name='reportes'),
     path('detalle-inventario/<int:idInventario>/', views.reporte_detalles, name='reporte_detalles'),
-]
+    ]

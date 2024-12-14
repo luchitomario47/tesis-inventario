@@ -3,6 +3,8 @@ import json
 from .models import InvCab, InvDet, Datos  # Asegúrate de importar tu modelo Datos
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.core.paginator import Paginator
+from django.db.models import Sum
 
 def home(request):
     # Obtener todas las cabeceras de inventarios y las tiendas activas
@@ -12,15 +14,6 @@ def home(request):
         "Inventarios": cabeceras,
         "Tiendas": tiendas  # Agregar tiendas activas al contexto
     })
-
-def reportes(request):
-    # Obtener los datos de los inventarios
-    return render(request, 'reportes.html')
-
-def reportes(request):
-    # Obtener todos los registros de InvCab
-    inventarios = InvCab.objects.all()
-    return render(request, 'reportes.html', {'inventarios': inventarios})
 
 @csrf_exempt
 def guardarDatos(request):
@@ -84,20 +77,57 @@ def guardarDatos(request):
     # Responder si el método HTTP no es POST
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
-def editar_inventario(request, id):
-    # Lógica para editar el inventario
-    pass
+def reportes(request):
+    # Obtener todos los registros de InvCab y ordenarlos por fecha descendente
+    inventarios = InvCab.objects.all().order_by('-date_created')
+    paginator = Paginator(inventarios, 20)  # 20 registros por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'reportes.html', {
+        'inventarios': inventarios,
+        'page_obj': page_obj,
+    })
 
-def eliminar_inventario(request, id):
-    # Lógica para eliminar el inventario
-    try:
-        inventario = InvCab.objects.get(id=id)
-        inventario.delete()
-        return JsonResponse({'status': 'success'}, status=200)
-    except InvCab.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Inventario no encontrado'}, status=404)
+
 
 def reporte_detalles(request, idInventario):
+    # Obtener el inventario
     inventario = get_object_or_404(InvCab, idInventario=idInventario)
-    detalles = InvDet.objects.filter(idInventario=inventario)
-    return render(request, 'inventarioApp/reporte_detalles.html', {'inventario': inventario, 'detalles': detalles})
+    
+    # Obtener el término de búsqueda para SKU y zona (si existen)
+    sku_buscar = request.GET.get('sku', '').strip()
+    zona_buscar = request.GET.get('zona', '').strip()
+
+    # Obtener los detalles agrupados por SKU, ordenados por zona
+    detalles_list = (
+        InvDet.objects.filter(idInventario=inventario)
+        .values('sku', 'zona')  # Agrupación por SKU y zona
+    )
+    
+    # Filtrar por SKU si se proporciona un término de búsqueda
+    if sku_buscar:
+        detalles_list = detalles_list.filter(sku__icontains=sku_buscar)
+    
+    # Filtrar por zona (exacta) si se proporciona un término de búsqueda
+    if zona_buscar:
+        detalles_list = detalles_list.filter(zona__exact=zona_buscar)
+    
+    # Sumar cantidades y ordenar por zona
+    detalles_list = (
+        detalles_list
+        .annotate(cantidad_total=Sum('cantidad'))  # Sumar cantidades
+        .order_by('zona')  # Ordenar por zona
+    )
+    
+    # Configurar el paginador
+    paginator = Paginator(detalles_list, 50)  # 50 detalles por página
+    page_number = request.GET.get('page')
+    detalles = paginator.get_page(page_number)
+    
+    # Renderizar el template
+    return render(request, 'reportes_detalles.html', {
+        'inventario': inventario,
+        'detalles': detalles,
+        'sku_buscar': sku_buscar,  # Pasar el término de búsqueda de SKU al template
+        'zona_buscar': zona_buscar,  # Pasar el término de búsqueda de zona al template
+    })

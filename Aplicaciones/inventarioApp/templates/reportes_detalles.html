@@ -2,41 +2,89 @@
 {% load static %}
 
 {% block body %}
-    <h1 class="my-4">Detalles del Inventario: {{ inventario.idInventario }}</h1>
-    
-    <!-- Información básica del inventario -->
-    <div class="mb-4">
-        <p><strong>Store:</strong> {{ inventario.store }}</p>
-        <p><strong>Fecha de Creación:</strong> {{ inventario.date_created }}</p>
-    </div>
-    
-    <!-- Tabla con los detalles del inventario -->
-    <table class="table table-striped table-bordered table-hover">
-        <thead class="table-dark">
-            <tr>
-                <th>Producto</th>
-                <th>Cantidad</th>
-                <th>Precio</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for detalle in detalles %}
-                <tr>
-                    <td>{{ detalle.producto }}</td>
-                    <td>{{ detalle.cantidad }}</td>
-                    <td>${{ detalle.precio }}</td>
-                    <td>${{ detalle.total }}</td>
-                </tr>
-            {% empty %}
-                <tr>
-                    <td colspan="4">No hay detalles disponibles para este inventario.</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
 
-    <a href="{% url 'reportes' %}" class="btn btn-primary">Volver</a>
+<h1 class="my-4">Detalles del Inventario: {{ inventario.idInventario }}</h1>
+    
+<!-- Información básica del inventario -->
+<div class="mb-4">
+    <p><strong>Store:</strong> {{ inventario.store }}</p>
+    <p><strong>Fecha de Creación:</strong> {{ inventario.date_created }}</p>
+</div>
+
+<!-- Formulario de búsqueda por SKU y zona -->
+<form method="get" action="">
+    <div class="input-group mb-4">
+        <input type="text" name="sku" value="{{ sku_buscar }}" class="form-control" placeholder="Buscar por SKU">
+        <input type="text" name="zona" value="{{ zona_buscar }}" class="form-control" placeholder="Buscar por Zona">
+        <button class="btn btn-primary" type="submit">Buscar</button>
+    </div>
+</form>
+
+<!-- Tabla con los detalles del inventario -->
+<table class="table table-striped table-bordered table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>SKU</th>
+            <th>Cantidad</th>
+            <th>Zona</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for detalle in detalles %}
+        <tr>
+            <td>{{ detalle.sku }}</td>
+            <td>{{ detalle.cantidad_total }}</td>
+            <td>{{ detalle.zona }}</td>
+            <td>
+              
+                <button class="btn btn-danger btn-sm" onclick="eliminarDetalle('{{ detalle.sku }}')">
+                    <i class="fas fa-trash"></i> Borrar
+                </button>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center">No hay detalles disponibles para este inventario.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Paginador -->
+<nav>
+    <ul class="pagination justify-content-center">
+        {% if detalles.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ detalles.previous_page_number }}&sku={{ sku_buscar }}&zona={{ zona_buscar }}">Anterior</a>
+            </li>
+        {% endif %}
+        {% for num in detalles.paginator.page_range %}
+            <li class="page-item {% if detalles.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}&sku={{ sku_buscar }}&zona={{ zona_buscar }}">{{ num }}</a>
+            </li>
+        {% endfor %}
+        {% if detalles.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ detalles.next_page_number }}&sku={{ sku_buscar }}&zona={{ zona_buscar }}">Siguiente</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+
+<!-- Botón de regreso -->
+<a href="{% url 'reportes' %}" class="btn btn-primary mt-3">
+    <i class="fas fa-arrow-left"></i> Volver
+</a>
+
+<!-- Script de confirmación para eliminar -->
+<script>
+    function eliminarDetalle(id) {
+        if (confirm('¿Estás seguro de que deseas eliminar este detalle?')) {
+            // Redirigir o realizar acción con id
+            window.location.href = `/eliminar_detalle/${id}`;
+        }
+    }
+</script>
 
 {% endblock %}
-
