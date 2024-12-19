@@ -1,7 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block body %}
-<form method="post" id="miFormulario">
+<h1>Conteo de Inventario</h1>
+<form method="post" id="formConteo">
     {% csrf_token %}
     <div class="form-group">
         <!-- Aquí van los campos del formulario, como los que ya tienes -->
@@ -26,26 +27,15 @@
         </div>
         <div class="input-group mt-2">
             <span class="input-group-text">Cantidad</span>
-            <input type="number" id="cantidadInput" class="form-control" value="1" disabled />
+            <input type="number" id="cantidadInput" class="form-control" />
         </div>
-        <div class="input-group mt-2">
-            <span class="input-group-text">SKU</span>
-            <input type="text" id="skuInput" class="form-control" placeholder="SKU" />
-        </div>
-        <button type="button" class="btn btn-success mt-3" id="agregarBtn">Agregar</button>
-    </div>
-    <p>Total de elementos: <span id="contadorElementos">0</span></p>
-
-    <h3>Inventariado</h3>
+    <h3>Contado</h3>
     <div class="table-container">
         <table class="table table-striped mt-3">
             <thead>
                 <tr>
-                    <th>SKU</th>
-                    <th>Modelo</th>
                     <th>Zona</th>
-                    <th>Cantidad</th>
-                    <th>Fecha</th>
+                    <th>Conteo</th>
                 </tr>
             </thead>
             <tbody id="inventarioBody">

@@ -29,11 +29,23 @@
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             <li class="nav-item">
-              <a class="nav-link active" aria-current="page" href="{% url 'home' %}">Toma de Inventarios</a>
+              <a class="nav-link" aria-current="page" href="{% url 'tomaInventario' %}">Toma de Inventarios</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'contarInventario' %}">Conteo Inventarios</a>
             </li>
             <li class="nav-item">
               <a class="nav-link" href="{% url 'reportes' %}">Reportes</a>
             </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  Análisis
+              </a>
+              <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                  <li><a class="dropdown-item" href="{% url 'prediccionDemanda' %}">Predicción Demanda x Tienda</a></li>
+                  <li><a class="dropdown-item" href=""></a>Prediccion Ventas</li>
+              </ul>
+          </li>          
           </ul>
         </div>
       </div>

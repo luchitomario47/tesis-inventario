@@ -203,6 +203,7 @@ document.getElementById('enviarBtn').addEventListener('click', function () {
             document.getElementById('zonaInput').value = '';
             document.getElementById('skuInput').value = '';
             document.getElementById('cantidadInput').disabled = true;
+            location.reload();
 
             Swal.fire('Enviado', 'El inventario ha sido enviado correctamente.', 'success');
         }
@@ -246,6 +247,7 @@ document.getElementById('limpiarBtn').addEventListener('click', function () {
             document.getElementById('zonaInput').value = '';
             document.getElementById('skuInput').value = '';
             document.getElementById('cantidadInput').disabled = true;
+            location.reload();
 
             Swal.fire(
                 'Limpio',
@@ -334,12 +336,10 @@ document.getElementById('enviarBtn').addEventListener('click', function () {
     });
 });
 
-
-
-
 // Escuchar el evento de clic en el botón Agregar
 document.getElementById('agregarBtn').addEventListener('click', function () {
     agregarItem(); // Llamar a la función para agregar el item
+    actualizarContador();
 });
 
 // Escuchar la tecla Enter en el campo SKU para agregar el elemento
@@ -347,6 +347,7 @@ document.getElementById('skuInput').addEventListener('keypress', function (event
     if (event.key === 'Enter') {
         event.preventDefault();
         agregarItem(); // Llamar a la función para agregar el item
+        actualizarContador();
     }
 });
 
@@ -358,10 +359,25 @@ document.addEventListener('DOMContentLoaded', function () {
 // Función para actualizar el contador
 
 function actualizarContador() {
-    const inventario = obtenerInventario(); // Obtener el inventario desde localStorage
-    const contadorElementos = document.getElementById('contadorElementos'); // Elemento donde se muestra el contador
-    contadorElementos.value = inventario.length; // Actualizar el contador con la cantidad de elementos
+    const inventarioJson = localStorage.getItem('inventario'); // Obtener el inventario del localStorage
+    let totalElementos = 0; // Inicializar el contador en 0 
+
+    if (inventarioJson) { // Verificar si existe algo en localStorage con la clave 'inventario'
+        const inventario = JSON.parse(inventarioJson); // Convertir de JSON a un arreglo
+        if (Array.isArray(inventario)) { // Verificar que es un arreglo
+            totalElementos = inventario.length; // Contar los elementos del arreglo
+        }
+    }
+    // Actualizar el contador en el HTML
+    const contadorElementos = document.getElementById('contadorElementos');
+    if (contadorElementos) {
+        contadorElementos.textContent = totalElementos; // Mostrar el número de elementos en el HTML
+    } else {
+        console.error("Elemento con id 'contadorElementos' no encontrado.");
+    }
 }
-const inventario = obtenerInventario();
-console.log(inventario.length);
+
+// Llamar a la función para actualizar el contador
+actualizarContador();
+
 

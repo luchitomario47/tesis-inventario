@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block body %}
+
+<h1 class="text-center my-4">Predicción de Demanda por Tienda</h1>
+
+<!-- Formulario para seleccionar tienda -->
+<div class="container">
+    <form method="get" action="" class="mb-4">
+        <div class="row">
+            <div class="col-md-6 offset-md-3">
+                <div class="form-group">
+                    <label for="store" class="form-label">Seleccionar Tienda:</label>
+                    <select name="store" id="store" class="form-control">
+                        <option value="">-- Selecciona una tienda --</option>
+                        {% for tienda in tiendas %}
+                            <option value="{{ tienda }}" {% if tienda == tienda_seleccionada %}selected{% endif %}>
+                                Tienda {{ tienda }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block mt-3">Buscar</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Formulario para descargar predicciones -->
+<div class="container">
+    <form method="get" action="{% url 'descargar_predicciones' %}">
+        <input type="hidden" name="store" value="{{ tienda_seleccionada }}">
+        <button type="submit" class="btn btn-success btn-block mb-4">Descargar Predicciones</button>
+    </form>
+</div>
+
+<!-- Mostrar predicciones solo si hay datos -->
+{% if tienda_seleccionada %}
+    <div class="container">
+        <h2 class="text-center">Predicciones para la Tienda {{ tienda_seleccionada }}</h2>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>SKU</th>
+                        <th>Predicción</th>
+                        <th>Mes de Despacho</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if predicciones %}
+                        {% for prediccion in predicciones %}
+                            <tr>
+                                <td>{{ prediccion.sku }}</td>
+                                <td>{{ prediccion.prediccion }}</td>
+                                <td>{{ prediccion.mes_despacho }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center">No hay predicciones para esta tienda.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endif %}
+
+{% endblock %}

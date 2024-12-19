@@ -1,16 +1,29 @@
 from django.shortcuts import get_object_or_404, render, get_list_or_404
 import json
 from .models import InvCab, InvDet, Datos  # Asegúrate de importar tu modelo Datos
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from django.db.models import Sum
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+import numpy as np
+from datetime import datetime, timedelta
 
-def home(request):
+def tomaInventario(request):
     # Obtener todas las cabeceras de inventarios y las tiendas activas
     cabeceras = InvCab.objects.all()  # Si necesitas los datos de InvCab
     tiendas = Datos.objects.filter(activo=1)  # Filtra las tiendas activas
     return render(request, 'gestionInventarios.html', {
+        "Inventarios": cabeceras,
+        "Tiendas": tiendas  # Agregar tiendas activas al contexto
+    })
+
+def contarInventario(request):
+    # Obtener todas las cabeceras de inventarios y las tiendas activas
+    cabeceras = InvCab.objects.all()  # Si necesitas los datos de InvCab
+    tiendas = Datos.objects.filter(activo=1)  # Filtra las tiendas activas
+    return render(request, 'contarInv.html', {
         "Inventarios": cabeceras,
         "Tiendas": tiendas  # Agregar tiendas activas al contexto
     })
@@ -43,7 +56,6 @@ def guardarDatos(request):
                 idInventario=inv_cab_data['idInv'],
                 defaults={
                     'store': inv_cab_data['tienda'],
-                    #'id_user': 'lperez',
                     'estado': 1
                 }
             )
@@ -131,3 +143,138 @@ def reporte_detalles(request, idInventario):
         'sku_buscar': sku_buscar,  # Pasar el término de búsqueda de SKU al template
         'zona_buscar': zona_buscar,  # Pasar el término de búsqueda de zona al template
     })
+
+def predecirDemanda(request):
+    # Obtener datos históricos de InvDet
+    ventas = InvDet.objects.values('idInventario_id', 'sku', 'cantidad', 'fecha_creacion')
+
+    # Convertir a DataFrame
+    df = pd.DataFrame(ventas)
+
+    # Extraer el store de los últimos 3 dígitos del idInventario
+    df['store'] = df['idInventario_id'].astype(str).str[-3:]
+
+    # Convertir a datetime
+    df['fecha_creacion'] = pd.to_datetime(df['fecha_creacion'])
+
+    # Agrupar por store, sku y mes
+    df_grouped = df.groupby([
+        pd.Grouper(key='fecha_creacion', freq='M'),  # Agrupar por mes
+        'store',
+        'sku'
+    ]).agg({'cantidad': 'sum'}).reset_index()
+
+    # Lista de tiendas para el combobox
+    tiendas = df_grouped['store'].unique()
+
+    # Obtener la tienda seleccionada desde el request
+    tienda_seleccionada = request.GET.get('store', None)
+    predicciones = []
+
+    if tienda_seleccionada:
+        # Filtrar datos por la tienda seleccionada
+        df_store = df_grouped[df_grouped['store'] == tienda_seleccionada]
+
+        skus = df_store['sku'].unique()  # Todos los SKUs para la tienda seleccionada
+
+        # Fecha actual y próxima fecha
+        fecha_actual = datetime.now()
+        proxima_fecha = (fecha_actual + timedelta(days=30)).replace(day=1)  # Primer día del siguiente mes
+        proxima_fecha_timestamp = int(proxima_fecha.timestamp() * 10**9)  # Convertir a nanosegundos
+
+        for sku in skus:
+            # Filtrar datos por SKU específico dentro de la tienda
+            df_sku = df_store[df_store['sku'] == sku]
+
+            # Convertir fechas a números para la regresión (timestamps en nanosegundos)
+            X = df_sku['fecha_creacion'].astype('int64').values.reshape(-1, 1)  # Timestamps
+            y = df_sku['cantidad'].values
+
+            # Verificar que haya suficientes datos para entrenar
+            if len(X) > 1:
+                # Entrenar modelo
+                model = LinearRegression()
+                model.fit(X, y)
+
+                # Predicción para el próximo mes
+                prediccion = model.predict([[proxima_fecha_timestamp]])[0]
+
+                # Excluir predicciones <= 0 y valores irrelevantes
+                if prediccion > 0:
+                    mes_despacho = proxima_fecha.strftime('%Y-%m')  # Año y mes del próximo despacho
+                    predicciones.append({
+                        'store': tienda_seleccionada,
+                        'sku': sku,
+                        'prediccion': int(round(prediccion)),  # Redondear predicción
+                        'mes_despacho': mes_despacho
+                    })
+
+    # Pasar predicciones y tiendas a la plantilla
+    return render(request, 'analisis/prediccion_tienda.html', {
+        'predicciones': predicciones,
+        'tiendas': tiendas,
+        'tienda_seleccionada': tienda_seleccionada
+    })
+
+def descargar_predicciones(request):
+    # Obtener datos históricos de InvDet
+    ventas = InvDet.objects.values('idInventario_id', 'sku', 'cantidad', 'fecha_creacion')
+
+    # Convertir a DataFrame
+    df = pd.DataFrame(ventas)
+
+    # Extraer el store de los últimos 3 dígitos del idInventario
+    df['store'] = df['idInventario_id'].astype(str).str[-3:]
+
+    # Convertir a datetime
+    df['fecha_creacion'] = pd.to_datetime(df['fecha_creacion'])
+
+    # Agrupar por store, sku y mes
+    df_grouped = df.groupby([
+        pd.Grouper(key='fecha_creacion', freq='M'),  # Agrupar por mes
+        'store',
+        'sku'
+    ]).agg({'cantidad': 'sum'}).reset_index()
+
+    # Obtener tienda seleccionada
+    tienda_seleccionada = request.GET.get('store', None)
+
+    # Filtrar por la tienda seleccionada si existe
+    if tienda_seleccionada:
+        df_grouped = df_grouped[df_grouped['store'] == tienda_seleccionada]
+
+    # Fecha actual y próxima fecha
+    fecha_actual = datetime.now()
+    proxima_fecha = (fecha_actual + timedelta(days=30)).replace(day=1)  # Primer día del siguiente mes
+    proxima_fecha_timestamp = int(proxima_fecha.timestamp() * 10**9)  # Convertir a nanosegundos
+
+    predicciones = []
+    for sku in df_grouped['sku'].unique():
+        df_sku = df_grouped[df_grouped['sku'] == sku]
+        X = df_sku['fecha_creacion'].astype('int64').values.reshape(-1, 1)
+        y = df_sku['cantidad'].values
+
+        if len(X) > 1:
+            model = LinearRegression()
+            model.fit(X, y)
+            prediccion = model.predict([[proxima_fecha_timestamp]])[0]
+
+            if prediccion > 0:
+                predicciones.append({
+                    'store': tienda_seleccionada or 'Todas',
+                    'sku': sku,
+                    'prediccion': int(round(prediccion)),
+                    'mes_despacho': proxima_fecha.strftime('%Y-%m')
+                })
+
+    # Convertir predicciones a DataFrame
+    df_predicciones = pd.DataFrame(predicciones)
+
+    # Generar CSV o XLSX (en este ejemplo, CSV)
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="predicciones.csv"'
+
+    # Convertir DataFrame a CSV
+    df_predicciones.to_csv(response, index=False)
+
+    return response

@@ -70,3 +70,24 @@ class Datos(models.Model):
 
     def __str__(self):
         return self.nombre_tienda
+
+class ProductosRtpro(models.Model):
+    id = models.AutoField(primary_key=True)  # Asegúrate de que `id` sea una clave primaria
+    sku = models.CharField(max_length=50)  # SKU como texto
+    descripcion = models.CharField(max_length=255, blank=True, null=True)  # Descripción del producto
+    ventana = models.CharField(max_length=10, blank=True, null=True)  # V0, V1, ..., V10
+    temp_comercial = models.CharField(max_length=50, blank=True, null=True)  # TEMP_COMERCIAL
+    coleccion = models.CharField(max_length=50, blank=True, null=True)
+    familia = models.CharField(max_length=50, blank=True, null=True)
+    marca = models.CharField(max_length=50, blank=True, null=True)
+    modelo = models.CharField(max_length=50, blank=True, null=True)
+    color = models.CharField(max_length=50, blank=True, null=True)
+    talla = models.CharField(max_length=10, blank=True, null=True)
+    lppv = models.IntegerField(blank=True, null=True)  
+    lpmay = models.IntegerField(blank=True, null=True)  
+    lpof = models.IntegerField(blank=True, null=True)  
+    lpout = models.IntegerField(blank=True, null=True) 
+
+
+    def __str__(self):
+        return f"Detalle SKU {self.sku} - {self.descripcion}"
