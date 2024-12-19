@@ -91,3 +91,20 @@ class ProductosRtpro(models.Model):
 
     def __str__(self):
         return f"Detalle SKU {self.sku} - {self.descripcion}"
+    
+class repositorioVentas(models.Model):
+    id = models.AutoField(primary_key=True)
+    invc_sid = models.CharField(max_length=50)
+    service_uid = models.CharField(max_length=50)
+    invoice_number = models.CharField(max_length=50)
+    createtime = models.DateTimeField()
+    channel = models.CharField(max_length=50)
+    sku = models.CharField(max_length=50)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    quantity = models.IntegerField()
+    total = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"Detalle SKU {self.sku} - Folio {self.folio}"
+    
+
