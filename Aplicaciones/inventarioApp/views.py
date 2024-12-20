@@ -334,26 +334,6 @@ def generar_grafico_barras(datos):
 
 
 
-from .prediccion import predecir_demanda_arima, predecir_demanda_lstm  # Importamos las funciones de predicción
-
-# Vista para realizar predicción de demanda de un SKU
-def prediccion_demanda(request):
-    sku = request.GET.get('sku')  # Recuperamos el SKU de la solicitud
-    dias_futuro = int(request.GET.get('dias_futuro', 30))  # Cuántos días hacia el futuro predecir (opcional)
-
-    if not sku:
-        return JsonResponse({"error": "SKU no proporcionado"}, status=400)
-
-    # Llamamos a la función de predicción, puedes elegir ARIMA o LSTM
-    forecast_arima = predecir_demanda_arima(sku, dias_futuro)
-
-    # Si prefieres usar LSTM, puedes descomentar la siguiente línea
-    # forecast_lstm = predecir_demanda_lstm(sku, dias_futuro)
-
-    # Devolver las predicciones en formato JSON
-    return JsonResponse({"sku": sku, "predicciones": forecast_arima.tolist()})
-
-
 def dashboard_tiendas(request):
     # Obtener todos los inventarios agrupados por idInventario
     inventarios = (
@@ -435,22 +415,19 @@ def analisisModelo(request):
     inventarios_df = pd.DataFrame(list(inventarios_data))
 
     if not inventarios_df.empty:
-        # Extraer el modelo (primeros 9 dígitos del SKU)
-        inventarios_df['modelo'] = inventarios_df['sku'].apply(lambda x: str(x)[:9])
-        
-        # Excluir los modelos que comiencen con 'M'
-        inventarios_df = inventarios_df[~inventarios_df['modelo'].str.startswith('M')]
+        # Excluir los modelos que comienzan con 'M' (si es necesario)
+        inventarios_df = inventarios_df[~inventarios_df['sku'].str.startswith('M')]
 
-        # Calcular el stock total por modelo
-        modelos_resumen = inventarios_df.groupby('modelo')['cantidad'].sum().sort_values(ascending=False)
+        # Calcular el stock total por SKU
+        sku_resumen = inventarios_df.groupby('sku')['cantidad'].sum().sort_values(ascending=False)
 
-        # Obtener los 80 modelos con más stock
-        top_modelos = modelos_resumen.head(80)
+        # Obtener los 40 SKUs con más stock
+        top_skus = sku_resumen.head(40)
     else:
-        modelos_resumen = pd.Series([])
-        top_modelos = pd.Series([])
+        sku_resumen = pd.Series([])
+        top_skus = pd.Series([])
 
-    # Crear un gráfico de barras para los 80 modelos con más stock
+    # Crear un gráfico de barras para los 40 SKUs con más stock
     def create_chart(data, title, xlabel, ylabel, color):
         if data.empty:
             return None  # Retornar None si no hay datos
@@ -468,15 +445,15 @@ def analisisModelo(request):
         buf.close()
         return chart
 
-    top_modelos_chart = create_chart(
-        top_modelos, 'Modelos con Más Stock (Excluyendo los que empiezan con "M")',
-        'Modelos', 'Cantidad de Stock', 'green'
+    top_skus_chart = create_chart(
+        top_skus, 'SKUs con Más Stock (Excluyendo los que empiezan con "M")',
+        'SKU', 'Cantidad de Stock', 'green'
     )
 
     # Pasar los datos al template
     context = {
-        'top_modelos_chart': top_modelos_chart,
-        'top_modelos': top_modelos.to_dict() if not top_modelos.empty else {},
+        'top_skus_chart': top_skus_chart,
+        'top_skus': top_skus.to_dict() if not top_skus.empty else {},
     }
 
     return render(request, 'analisis_modelo.html', context)
