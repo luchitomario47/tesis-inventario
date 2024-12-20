@@ -65,5 +65,36 @@
     {% else %}
         <p>No hay datos disponibles para mostrar el top de prendas con más existencias.</p>
     {% endif %}
+
+    <!-- Sección de Predicción de Demanda -->
+    <h3 class="mt-5">Predicción de Demanda</h3>
+    <form id="form-prediccion" method="get" action="{% url 'prediccion_demanda' %}">
+        <div class="form-group">
+            <label for="sku">SKU de la Prenda:</label>
+            <input type="text" class="form-control" id="sku" name="sku" placeholder="Ingrese el SKU" required>
+        </div>
+
+        <div class="form-group">
+            <label for="dias_futuro">Días a Predecir:</label>
+            <input type="number" class="form-control" id="dias_futuro" name="dias_futuro" value="30" min="1">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Obtener Predicción</button>
+    </form>
+
+    <!-- Área para mostrar las predicciones -->
+    <h4 class="mt-4">Resultado de la Predicción</h4>
+    <div id="resultados-prediccion">
+        {% if predicciones %}
+            <p><strong>Predicción de Demanda para SKU {{ sku }}:</strong></p>
+            <ul>
+                {% for prediccion in predicciones %}
+                    <li>{{ prediccion }} unidades para el día {{ forloop.counter }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No se ha realizado ninguna predicción aún.</p>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}

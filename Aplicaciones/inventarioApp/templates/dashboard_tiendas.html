@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block body %}
+<div class="container mt-5">
+    <h1 class="text-center">Dashboard de Variación de Inventarios por Tienda</h1>
+
+    <!-- Combobox para seleccionar tienda -->
+    <form method="get" class="mt-4">
+        <div class="form-group">
+            <label for="tienda">Selecciona una tienda:</label>
+            <select name="tienda" id="tienda" class="form-control" onchange="this.form.submit()">
+                <option value="" disabled selected>Selecciona una tienda</option>
+                {% for tienda in inventarios_por_tienda.keys %}
+                    <option value="{{ tienda }}" {% if tienda == tienda_seleccionada %}selected{% endif %}>
+                        Tienda {{ tienda }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+
+    {% if tienda_seleccionada %}
+        <h2 class="mt-4">Resultados para Tienda {{ tienda_seleccionada }}</h2>
+
+        <!-- Gráfico -->
+        <div class="mt-4 text-center">
+            {% if graficos_tiendas.grafico %}
+                <img src="data:image/png;base64,{{ graficos_tiendas.grafico }}" alt="Gráfico Tienda {{ graficos_tiendas.tienda }}" class="img-fluid">
+            {% else %}
+                <p>No hay datos disponibles para generar el gráfico.</p>
+            {% endif %}
+        </div>
+
+        <!-- Tabla -->
+        <h3 class="mt-4">Inventarios Realizados</h3>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID Inventario</th>
+                    <th>Tienda</th>
+                    <th>Fecha</th>
+                    <th>Total Inventario</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inventario in datos_tienda %}
+                    <tr>
+                        <td>{{ inventario.idInventario }}</td>
+                        <td>{{ tienda_seleccionada }}</td>
+                        <td>{{ inventario.fecha }}</td>
+                        <td>{{ inventario.total_prendas }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="mt-4">Selecciona una tienda para ver los resultados.</p>
+    {% endif %}
+</div>
+{% endblock %}

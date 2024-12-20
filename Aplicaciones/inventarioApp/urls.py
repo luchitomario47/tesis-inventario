@@ -11,4 +11,6 @@ urlpatterns = [
     path('analisisVentasAgno/', views.analisisVentasAgno, name='analisisVentasAgno'),
     path('analisisVentasMes/', views.analizar_datos_mensual, name='analisisVentasMes'),
     path('analisisInventarios/', views.analisisInventarios, name='analisisInventarios'),
+    path('prediccion_demanda/', views.prediccion_demanda, name='prediccion_demanda'),
+    path('dashboardTiendas', views.dashboard_tiendas, name='dashboardTiendas'),
     ]

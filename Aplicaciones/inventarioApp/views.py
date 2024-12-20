@@ -324,3 +324,102 @@ def analisisInventarios(request):
     }
 
     return render(request, 'analisis_inventarios.html', context)
+
+from .prediccion import predecir_demanda_arima, predecir_demanda_lstm  # Importamos las funciones de predicción
+
+# Vista para realizar predicción de demanda de un SKU
+def prediccion_demanda(request):
+    sku = request.GET.get('sku')  # Recuperamos el SKU de la solicitud
+    dias_futuro = int(request.GET.get('dias_futuro', 30))  # Cuántos días hacia el futuro predecir (opcional)
+
+    if not sku:
+        return JsonResponse({"error": "SKU no proporcionado"}, status=400)
+
+    # Llamamos a la función de predicción, puedes elegir ARIMA o LSTM
+    forecast_arima = predecir_demanda_arima(sku, dias_futuro)
+
+    # Si prefieres usar LSTM, puedes descomentar la siguiente línea
+    # forecast_lstm = predecir_demanda_lstm(sku, dias_futuro)
+
+    # Devolver las predicciones en formato JSON
+    return JsonResponse({"sku": sku, "predicciones": forecast_arima.tolist()})
+
+import matplotlib.pyplot as plt
+import io
+import base64
+from django.shortcuts import render
+from django.db.models import Sum
+from .models import InvDet
+
+def dashboard_tiendas(request):
+    # Obtener todos los inventarios agrupados por idInventario
+    inventarios = (
+        InvDet.objects.values('idInventario')
+        .annotate(total_prendas=Sum('cantidad'))
+        .order_by('idInventario')
+    )
+
+    inventarios_por_tienda = {}
+
+    for inv in inventarios:
+        idInventario = str(inv['idInventario'])
+        tienda = idInventario[-3:]  # Últimos tres dígitos como tienda
+        fecha = f"{idInventario[:4]}-{idInventario[4:6]}-{idInventario[6:8]}"  # Formatear fecha YYYY-MM-DD
+
+        if tienda not in inventarios_por_tienda:
+            inventarios_por_tienda[tienda] = []
+
+        inventarios_por_tienda[tienda].append({
+            'idInventario': idInventario,
+            'fecha': fecha,
+            'total_prendas': inv['total_prendas'],
+        })
+
+    # Filtrar por tienda seleccionada
+    tienda_seleccionada = request.GET.get('tienda', None)
+
+    if tienda_seleccionada:
+        datos_tienda = inventarios_por_tienda.get(tienda_seleccionada, [])
+        graficos_tiendas = generar_grafico_tienda(tienda_seleccionada, datos_tienda)
+    else:
+        datos_tienda = []
+        graficos_tiendas = {}
+
+    context = {
+        'inventarios_por_tienda': inventarios_por_tienda,
+        'tienda_seleccionada': tienda_seleccionada,
+        'datos_tienda': datos_tienda,
+        'graficos_tiendas': graficos_tiendas,
+    }
+
+    return render(request, 'dashboard_tiendas.html', context)
+
+def generar_grafico_tienda(tienda, datos):
+    # Ordenar los datos por fecha
+    datos = sorted(datos, key=lambda x: x['fecha'])
+
+    if not datos:
+        return {}
+
+    fechas = [d['fecha'] for d in datos]
+    totales = [d['total_prendas'] for d in datos]
+
+    # Crear el gráfico
+    plt.figure(figsize=(10, 5))
+    plt.plot(fechas, totales, marker='o', label=f'Tienda {tienda}')
+    plt.title(f'Variación de Inventarios - Tienda {tienda}')
+    plt.xlabel('Fecha')
+    plt.ylabel('Total de Prendas')
+    plt.xticks(rotation=45)
+    plt.grid(True)
+    plt.legend()
+
+    # Guardar el gráfico en un buffer
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png', bbox_inches='tight')
+    buffer.seek(0)
+    image_base64 = base64.b64encode(buffer.read()).decode('utf-8')
+    buffer.close()
+    plt.close()
+
+    return {'tienda': tienda, 'grafico': image_base64}
