@@ -1,14 +1,16 @@
 from django.shortcuts import get_object_or_404, render, get_list_or_404
 import json
-from .models import InvCab, InvDet, Datos  # Asegúrate de importar tu modelo Datos
+from .models import InvCab, InvDet, Datos, repositorioVentas, repositorioVentasTienda  # Asegúrate de importar tu modelo Datos
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from django.db.models import Sum
-import pandas as pd
-from sklearn.linear_model import LinearRegression
-import numpy as np
 from datetime import datetime, timedelta
+import pandas as pd
+import matplotlib.pyplot as plt
+import io
+import base64
+
 
 def tomaInventario(request):
     # Obtener todas las cabeceras de inventarios y las tiendas activas
@@ -144,137 +146,181 @@ def reporte_detalles(request, idInventario):
         'zona_buscar': zona_buscar,  # Pasar el término de búsqueda de zona al template
     })
 
-def predecirDemanda(request):
-    # Obtener datos históricos de InvDet
-    ventas = InvDet.objects.values('idInventario_id', 'sku', 'cantidad', 'fecha_creacion')
+def analisisVentasAgno(request):
 
-    # Convertir a DataFrame
-    df = pd.DataFrame(ventas)
+    # Definir rango de fechas para el último año
+    hoy = datetime.now()
+    hace_un_anio = hoy - timedelta(days=365)
 
-    # Extraer el store de los últimos 3 dígitos del idInventario
-    df['store'] = df['idInventario_id'].astype(str).str[-3:]
+    # Consultar datos de ventas del último año
+    ventas_data = repositorioVentasTienda.objects.filter(
+        create_date__range=[hace_un_anio, hoy]
+    ).values('store_code', 'total_amount')
 
-    # Convertir a datetime
-    df['fecha_creacion'] = pd.to_datetime(df['fecha_creacion'])
+    ventas_df = pd.DataFrame(list(ventas_data))
 
-    # Agrupar por store, sku y mes
-    df_grouped = df.groupby([
-        pd.Grouper(key='fecha_creacion', freq='M'),  # Agrupar por mes
-        'store',
-        'sku'
-    ]).agg({'cantidad': 'sum'}).reset_index()
+    if not ventas_df.empty:
+        # Convertir a formato numérico
+        ventas_df['total_amount'] = pd.to_numeric(ventas_df['total_amount'], errors='coerce')
+        # Agrupar por tienda
+        ventas_resumen = ventas_df.groupby('store_code')['total_amount'].sum().sort_values(ascending=False)
+    else:
+        ventas_resumen = pd.Series([])
 
-    # Lista de tiendas para el combobox
-    tiendas = df_grouped['store'].unique()
+    # Crear gráficos
+    def create_chart(data, title, xlabel, ylabel, color):
+        if data.empty:
+            return None  # Retornar None si no hay datos
+        fig, ax = plt.subplots(figsize=(10, 6))
+        data.plot(kind='bar', ax=ax, color=color)
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+        chart = base64.b64encode(buf.getvalue()).decode('utf-8')
+        buf.close()
+        return chart
 
-    # Obtener la tienda seleccionada desde el request
-    tienda_seleccionada = request.GET.get('store', None)
-    predicciones = []
+    # Generar gráficos de ventas
+    ventas_chart = create_chart(
+        ventas_resumen, 'Ventas por Tienda (Último Año)', 'Tiendas', 'Ventas Totales', 'green'
+    )
 
-    if tienda_seleccionada:
-        # Filtrar datos por la tienda seleccionada
-        df_store = df_grouped[df_grouped['store'] == tienda_seleccionada]
+    # Obtener las tiendas que más y menos han vendido
+    top_tiendas = ventas_resumen.head(5).to_dict() if not ventas_resumen.empty else {}
+    low_tiendas = ventas_resumen.tail(5).to_dict() if not ventas_resumen.empty else {}
 
-        skus = df_store['sku'].unique()  # Todos los SKUs para la tienda seleccionada
+    # Pasar los datos al template
+    context = {
+        'ventas_chart': ventas_chart,
+        'top_tiendas': top_tiendas,
+        'low_tiendas': low_tiendas,
+    }
 
-        # Fecha actual y próxima fecha
-        fecha_actual = datetime.now()
-        proxima_fecha = (fecha_actual + timedelta(days=30)).replace(day=1)  # Primer día del siguiente mes
-        proxima_fecha_timestamp = int(proxima_fecha.timestamp() * 10**9)  # Convertir a nanosegundos
+    return render(request, 'analisis_ventas_ultimo_ano.html', context)
 
-        for sku in skus:
-            # Filtrar datos por SKU específico dentro de la tienda
-            df_sku = df_store[df_store['sku'] == sku]
 
-            # Convertir fechas a números para la regresión (timestamps en nanosegundos)
-            X = df_sku['fecha_creacion'].astype('int64').values.reshape(-1, 1)  # Timestamps
-            y = df_sku['cantidad'].values
+def analizar_datos_mensual(request):
+    from datetime import datetime
+    hoy = datetime.now()
+    mes_seleccionado = hoy.month
+    anio_seleccionado = hoy.year
 
-            # Verificar que haya suficientes datos para entrenar
-            if len(X) > 1:
-                # Entrenar modelo
-                model = LinearRegression()
-                model.fit(X, y)
+    if request.method == 'GET' and 'mes' in request.GET and 'anio' in request.GET:
+        mes_seleccionado = int(request.GET['mes'])
+        anio_seleccionado = int(request.GET['anio'])
 
-                # Predicción para el próximo mes
-                prediccion = model.predict([[proxima_fecha_timestamp]])[0]
+    # Filtrar las ventas del mes y año seleccionados
+    ventas_data = repositorioVentasTienda.objects.filter(
+        create_date__year=anio_seleccionado,
+        create_date__month=mes_seleccionado
+    ).values('store_code', 'total_amount')
 
-                # Excluir predicciones <= 0 y valores irrelevantes
-                if prediccion > 0:
-                    mes_despacho = proxima_fecha.strftime('%Y-%m')  # Año y mes del próximo despacho
-                    predicciones.append({
-                        'store': tienda_seleccionada,
-                        'sku': sku,
-                        'prediccion': int(round(prediccion)),  # Redondear predicción
-                        'mes_despacho': mes_despacho
-                    })
+    ventas_df = pd.DataFrame(list(ventas_data))
 
-    # Pasar predicciones y tiendas a la plantilla
-    return render(request, 'analisis/prediccion_tienda.html', {
-        'predicciones': predicciones,
-        'tiendas': tiendas,
-        'tienda_seleccionada': tienda_seleccionada
-    })
+    if not ventas_df.empty:
+        ventas_df['total_amount'] = pd.to_numeric(ventas_df['total_amount'], errors='coerce')
+        ventas_resumen = ventas_df.groupby('store_code')['total_amount'].sum().sort_values(ascending=False)
+    else:
+        ventas_resumen = pd.Series([])
 
-def descargar_predicciones(request):
-    # Obtener datos históricos de InvDet
-    ventas = InvDet.objects.values('idInventario_id', 'sku', 'cantidad', 'fecha_creacion')
+    def create_chart(data, title, xlabel, ylabel, color):
+        if data.empty:
+            return None
+        fig, ax = plt.subplots(figsize=(10, 6))
+        data.plot(kind='bar', ax=ax, color=color)
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+        chart = base64.b64encode(buf.getvalue()).decode('utf-8')
+        buf.close()
+        return chart
 
-    # Convertir a DataFrame
-    df = pd.DataFrame(ventas)
+    ventas_chart = create_chart(
+        ventas_resumen,
+        f'Ventas por Tienda - {mes_seleccionado}/{anio_seleccionado}',
+        'Tiendas',
+        'Ventas Totales',
+        'blue'
+    )
 
-    # Extraer el store de los últimos 3 dígitos del idInventario
-    df['store'] = df['idInventario_id'].astype(str).str[-3:]
+    context = {
+        'ventas_chart': ventas_chart,
+        'ventas_resumen': ventas_resumen.to_dict() if not ventas_resumen.empty else {},
+        'mes_seleccionado': mes_seleccionado,
+        'anio_seleccionado': anio_seleccionado,
+        'meses': range(1, 13),  # Agrega el rango de meses
+        'anios': range(2020, 2030),  # Agrega el rango de años
+    }
 
-    # Convertir a datetime
-    df['fecha_creacion'] = pd.to_datetime(df['fecha_creacion'])
+    return render(request, 'analisis_ventas_mensual.html', context)
 
-    # Agrupar por store, sku y mes
-    df_grouped = df.groupby([
-        pd.Grouper(key='fecha_creacion', freq='M'),  # Agrupar por mes
-        'store',
-        'sku'
-    ]).agg({'cantidad': 'sum'}).reset_index()
+from django.shortcuts import render
+import pandas as pd
+from .models import InvDet
 
-    # Obtener tienda seleccionada
-    tienda_seleccionada = request.GET.get('store', None)
+def analisisInventarios(request):
+    # Consultar los datos de inventario
+    inventarios_data = InvDet.objects.values('idInventario', 'sku', 'modelo', 'cantidad')
 
-    # Filtrar por la tienda seleccionada si existe
-    if tienda_seleccionada:
-        df_grouped = df_grouped[df_grouped['store'] == tienda_seleccionada]
+    # Convertir los datos a un DataFrame
+    inventarios_df = pd.DataFrame(list(inventarios_data))
 
-    # Fecha actual y próxima fecha
-    fecha_actual = datetime.now()
-    proxima_fecha = (fecha_actual + timedelta(days=30)).replace(day=1)  # Primer día del siguiente mes
-    proxima_fecha_timestamp = int(proxima_fecha.timestamp() * 10**9)  # Convertir a nanosegundos
+    if not inventarios_df.empty:
+        # Extraer la tienda (últimos tres dígitos de idInventario)
+        inventarios_df['store_code'] = inventarios_df['idInventario'].apply(lambda x: str(x)[-3:])
+        
+        # Calcular la cantidad total de prendas en cada tienda
+        inventarios_resumen = inventarios_df.groupby('store_code')['cantidad'].sum().sort_values(ascending=False)
+        
+        # Calcular las prendas con más existencias
+        top_prendas = inventarios_df.groupby('sku')['cantidad'].sum().sort_values(ascending=False).head(5)
+    else:
+        inventarios_resumen = pd.Series([])
+        top_prendas = pd.Series([])
 
-    predicciones = []
-    for sku in df_grouped['sku'].unique():
-        df_sku = df_grouped[df_grouped['sku'] == sku]
-        X = df_sku['fecha_creacion'].astype('int64').values.reshape(-1, 1)
-        y = df_sku['cantidad'].values
+    # Crear gráficos para mostrar los datos
+    def create_chart(data, title, xlabel, ylabel, color):
+        if data.empty:
+            return None  # Retornar None si no hay datos
+        fig, ax = plt.subplots(figsize=(10, 6))
+        data.plot(kind='bar', ax=ax, color=color)
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+        chart = base64.b64encode(buf.getvalue()).decode('utf-8')
+        buf.close()
+        return chart
 
-        if len(X) > 1:
-            model = LinearRegression()
-            model.fit(X, y)
-            prediccion = model.predict([[proxima_fecha_timestamp]])[0]
+    # Crear gráficos para el análisis de inventarios
+    inventarios_chart = create_chart(
+        inventarios_resumen, 'Total de Prendas por Tienda', 'Tiendas', 'Cantidad de Prendas', 'blue'
+    )
+    
+    top_prendas_chart = create_chart(
+        top_prendas, 'Prendas con Más Existencias', 'Prendas', 'Cantidad de Existencias', 'orange'
+    )
 
-            if prediccion > 0:
-                predicciones.append({
-                    'store': tienda_seleccionada or 'Todas',
-                    'sku': sku,
-                    'prediccion': int(round(prediccion)),
-                    'mes_despacho': proxima_fecha.strftime('%Y-%m')
-                })
+    # Pasar los datos al template
+    context = {
+        'inventarios_chart': inventarios_chart,
+        'top_prendas_chart': top_prendas_chart,
+        'inventarios_resumen': inventarios_resumen.to_dict() if not inventarios_resumen.empty else {},
+        'top_prendas': top_prendas.to_dict() if not top_prendas.empty else {},
+    }
 
-    # Convertir predicciones a DataFrame
-    df_predicciones = pd.DataFrame(predicciones)
-
-    # Generar CSV o XLSX (en este ejemplo, CSV)
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="predicciones.csv"'
-
-    # Convertir DataFrame a CSV
-    df_predicciones.to_csv(response, index=False)
-
-    return response
+    return render(request, 'analisis_inventarios.html', context)

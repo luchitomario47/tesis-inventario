@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block body %}
+<div class="container my-5">
+    <h1 class="text-center">Análisis de Ventas Mensuales</h1>
+
+    <form method="GET" class="my-4">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label for="mes" class="form-label">Mes:</label>
+                <select id="mes" name="mes" class="form-select">
+                    {% for mes in meses %}
+                        <option value="{{ mes }}" {% if mes == mes_seleccionado %}selected{% endif %}>
+                            {{ mes }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="anio" class="form-label">Año:</label>
+                <select id="anio" name="anio" class="form-select">
+                    {% for anio in anios %}
+                        <option value="{{ anio }}" {% if anio == anio_seleccionado %}selected{% endif %}>
+                            {{ anio }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 align-self-end">
+                <button type="submit" class="btn btn-primary">Analizar</button>
+            </div>
+        </div>
+    </form>
+    
+
+    <div class="chart-container my-4">
+        <h2 class="text-center">Gráfico de Ventas</h2>
+        {% if ventas_chart %}
+            <img src="data:image/png;base64,{{ ventas_chart }}" class="img-fluid" alt="Gráfico de Ventas">
+        {% else %}
+            <p class="text-center">No hay datos disponibles para este mes y año.</p>
+        {% endif %}
+    </div>
+
+    <!-- Tabla con todas las tiendas -->
+    <div class="table-responsive my-4">
+        <h2 class="text-center">Ventas por Tienda (Ordenadas de Mayor a Menor)</h2>
+        {% if ventas_resumen %}
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>Posición</th>
+                        <th>Tienda</th>
+                        <th>Ventas Totales</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for store, total in ventas_resumen.items %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ store }}</td>
+                            <td>${{ total|floatformat:2 }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="text-center">No hay datos disponibles para este mes y año.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -97,7 +97,7 @@ class repositorioVentas(models.Model):
     invc_sid = models.CharField(max_length=50)
     service_uid = models.CharField(max_length=50)
     invoice_number = models.CharField(max_length=50)
-    createtime = models.DateTimeField()
+    createtime = models.DateField()
     channel = models.CharField(max_length=50)
     sku = models.CharField(max_length=50)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -107,4 +107,16 @@ class repositorioVentas(models.Model):
     def __str__(self):
         return f"Detalle SKU {self.sku} - Folio {self.folio}"
     
+class repositorioVentasTienda(models.Model):
+    id = models.AutoField(primary_key=True)
+    invc_sid = models.CharField(max_length=50)
+    cust_sid = models.CharField(max_length=50)
+    create_date = models.DateField()
+    store_code = models.CharField(max_length=50)
+    type_dte = models.CharField(max_length=50)
+    tracking_no = models.CharField(max_length=50)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
 
+    def __str__(self):
+        return f"Detalle Folio {self.invc_sid} - Tienda {self.store_code}"
+    

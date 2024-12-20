@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block body %}
+<div class="container mt-5">
+    <h1 class="text-center">Análisis de Inventarios</h1>
+
+    <h2 class="mt-4">Total de Prendas por Tienda</h2>
+    {% if inventarios_chart %}
+        <div class="text-center">
+            <img src="data:image/png;base64,{{ inventarios_chart }}" alt="Gráfico de Inventarios por Tienda" class="img-fluid">
+        </div>
+    {% else %}
+        <p>No hay datos disponibles para mostrar el gráfico de inventarios por tienda.</p>
+    {% endif %}
+
+    <h2 class="mt-4">Top 5 de Prendas con Más Existencias</h2>
+    {% if top_prendas_chart %}
+        <div class="text-center">
+            <img src="data:image/png;base64,{{ top_prendas_chart }}" alt="Gráfico de Prendas con Más Existencias" class="img-fluid">
+        </div>
+    {% else %}
+        <p>No hay datos disponibles para mostrar el gráfico de prendas con más existencias.</p>
+    {% endif %}
+
+    <h3 class="mt-5">Resumen de Inventarios por Tienda</h3>
+    {% if inventarios_resumen %}
+        <table class="table table-striped table-bordered">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Tienda</th>
+                    <th>Cantidad de Prendas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tienda, cantidad in inventarios_resumen.items %}
+                    <tr>
+                        <td>{{ tienda }}</td>
+                        <td>{{ cantidad }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay datos disponibles para mostrar el resumen de inventarios por tienda.</p>
+    {% endif %}
+
+    <h3 class="mt-5">Top 5 Prendas con Más Existencias</h3>
+    {% if top_prendas %}
+        <table class="table table-striped table-bordered">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Prenda</th>
+                    <th>Cantidad de Existencias</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for prenda, cantidad in top_prendas.items %}
+                    <tr>
+                        <td>{{ prenda }}</td>
+                        <td>{{ cantidad }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay datos disponibles para mostrar el top de prendas con más existencias.</p>
+    {% endif %}
+</div>
+{% endblock %}
