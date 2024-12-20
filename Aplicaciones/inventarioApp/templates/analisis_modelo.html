@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block body %}
+<div class="container mt-4">
+    <h1 class="text-center">Análisis por Modelo</h1>
+    
+    <!-- Gráfico de Modelos -->
+    <div class="mt-4 text-center">
+        <h3>Modelos con Más Stock (Excluyendo las muestras)</h3>
+        {% if top_modelos_chart %}
+            <img src="data:image/png;base64,{{ top_modelos_chart }}" class="img-fluid" alt="Gráfico de Modelos">
+        {% else %}
+            <p>No hay datos disponibles para mostrar.</p>
+        {% endif %}
+    </div>
+    <!-- Tabla de Modelos -->
+    <div class="mt-4">
+        <h3>Top 80 Modelos con Más Stock</h3>
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>Modelo</th>
+                    <th>Cantidad de Stock</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for modelo, cantidad in top_modelos.items %}
+                    <tr>
+                        <td>{{ modelo }}</td>
+                        <td>{{ cantidad }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

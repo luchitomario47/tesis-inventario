@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block body %}
+    <style>
+        /* Estilos generales para la tabla */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-family: Arial, sans-serif;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Estilo de las celdas */
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        /* Encabezado de la tabla */
+        th {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Filas de la tabla */
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        /* Estilo de los estados de la anomalía */
+        .estado-anomalo {
+            color: white;
+            background-color: #f44336; /* Rojo */
+            padding: 5px 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .estado-normal {
+            color: white;
+            background-color: #4CAF50; /* Verde */
+            padding: 5px 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+    </style>
+
+    <h2>Detección de Anomalías en Inventario</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>SKU</th>
+                <th>Cantidad</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inventario in anomalos %}
+                <tr>
+                    <td>{{ inventario.sku }}</td>
+                    <td>{{ inventario.cantidad }}</td>
+                    <td>
+                        {% if inventario.estado == 'Anómalo' %}
+                            <span class="estado-anomalo">{{ inventario.estado }}</span>
+                        {% else %}
+                            <span class="estado-normal">{{ inventario.estado }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

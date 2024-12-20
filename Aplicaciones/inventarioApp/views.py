@@ -5,11 +5,13 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from django.db.models import Sum
+from django.utils import timezone
 from datetime import datetime, timedelta
 import pandas as pd
 import matplotlib.pyplot as plt
 import io
 import base64
+from sklearn.ensemble import IsolationForest
 
 
 def tomaInventario(request):
@@ -264,66 +266,73 @@ def analizar_datos_mensual(request):
 
     return render(request, 'analisis_ventas_mensual.html', context)
 
-from django.shortcuts import render
-import pandas as pd
-from .models import InvDet
 
 def analisisInventarios(request):
-    # Consultar los datos de inventario
-    inventarios_data = InvDet.objects.values('idInventario', 'sku', 'modelo', 'cantidad')
-
-    # Convertir los datos a un DataFrame
-    inventarios_df = pd.DataFrame(list(inventarios_data))
-
-    if not inventarios_df.empty:
-        # Extraer la tienda (últimos tres dígitos de idInventario)
-        inventarios_df['store_code'] = inventarios_df['idInventario'].apply(lambda x: str(x)[-3:])
-        
-        # Calcular la cantidad total de prendas en cada tienda
-        inventarios_resumen = inventarios_df.groupby('store_code')['cantidad'].sum().sort_values(ascending=False)
-        
-        # Calcular las prendas con más existencias
-        top_prendas = inventarios_df.groupby('sku')['cantidad'].sum().sort_values(ascending=False).head(5)
-    else:
-        inventarios_resumen = pd.Series([])
-        top_prendas = pd.Series([])
-
-    # Crear gráficos para mostrar los datos
-    def create_chart(data, title, xlabel, ylabel, color):
-        if data.empty:
-            return None  # Retornar None si no hay datos
-        fig, ax = plt.subplots(figsize=(10, 6))
-        data.plot(kind='bar', ax=ax, color=color)
-        ax.set_title(title)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png')
-        buf.seek(0)
-        chart = base64.b64encode(buf.getvalue()).decode('utf-8')
-        buf.close()
-        return chart
-
-    # Crear gráficos para el análisis de inventarios
-    inventarios_chart = create_chart(
-        inventarios_resumen, 'Total de Prendas por Tienda', 'Tiendas', 'Cantidad de Prendas', 'blue'
-    )
-    
-    top_prendas_chart = create_chart(
-        top_prendas, 'Prendas con Más Existencias', 'Prendas', 'Cantidad de Existencias', 'orange'
+ # Obtener todos los inventarios agrupados por idInventario
+    inventarios = (
+        InvDet.objects.values('idInventario')
+        .annotate(total_prendas=Sum('cantidad'))
+        .order_by('idInventario')
     )
 
-    # Pasar los datos al template
+    # Diccionario para almacenar el último inventario por tienda
+    ultimo_inventario_por_tienda = {}
+
+    for inv in inventarios:
+        idInventario = str(inv['idInventario'])
+        tienda = idInventario[-3:]  # Últimos tres dígitos como tienda
+        fecha = f"{idInventario[:4]}-{idInventario[4:6]}-{idInventario[6:8]}"  # Formatear fecha YYYY-MM-DD
+
+        # Si la tienda no está en el diccionario o la fecha es más reciente, actualizar
+        if tienda not in ultimo_inventario_por_tienda or fecha > ultimo_inventario_por_tienda[tienda]['fecha']:
+            ultimo_inventario_por_tienda[tienda] = {
+                'idInventario': idInventario,
+                'fecha': fecha,
+                'total_prendas': inv['total_prendas'],
+            }
+
+    # Preparar los datos para la tabla, ordenados por tienda
+    datos_tienda = sorted(
+        [{'tienda': tienda, **data} for tienda, data in ultimo_inventario_por_tienda.items()],
+        key=lambda x: x['tienda']
+    )
+
+    # Generar gráfico de barras
+    grafico_barras = generar_grafico_barras(datos_tienda)
+
     context = {
-        'inventarios_chart': inventarios_chart,
-        'top_prendas_chart': top_prendas_chart,
-        'inventarios_resumen': inventarios_resumen.to_dict() if not inventarios_resumen.empty else {},
-        'top_prendas': top_prendas.to_dict() if not top_prendas.empty else {},
+        'datos_tienda': datos_tienda,
+        'grafico_barras': grafico_barras,
     }
 
     return render(request, 'analisis_inventarios.html', context)
+
+
+def generar_grafico_barras(datos):
+    # Extraer tiendas y cantidades para el gráfico
+    tiendas = [d['tienda'] for d in datos]
+    cantidades = [d['total_prendas'] for d in datos]
+
+    # Crear el gráfico de barras
+    plt.figure(figsize=(10, 5))
+    plt.bar(tiendas, cantidades, color='skyblue')
+    plt.title('Cantidad de Prendas por Tienda')
+    plt.xlabel('Tiendas')
+    plt.ylabel('Cantidad de Prendas')
+    plt.xticks(rotation=45)
+    plt.grid(axis='y', linestyle='--', linewidth=0.7, alpha=0.7)
+
+    # Guardar el gráfico en un buffer
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png', bbox_inches='tight')
+    buffer.seek(0)
+    image_base64 = base64.b64encode(buffer.read()).decode('utf-8')
+    buffer.close()
+    plt.close()
+
+    return image_base64
+
+
 
 from .prediccion import predecir_demanda_arima, predecir_demanda_lstm  # Importamos las funciones de predicción
 
@@ -344,12 +353,6 @@ def prediccion_demanda(request):
     # Devolver las predicciones en formato JSON
     return JsonResponse({"sku": sku, "predicciones": forecast_arima.tolist()})
 
-import matplotlib.pyplot as plt
-import io
-import base64
-from django.shortcuts import render
-from django.db.models import Sum
-from .models import InvDet
 
 def dashboard_tiendas(request):
     # Obtener todos los inventarios agrupados por idInventario
@@ -423,3 +426,91 @@ def generar_grafico_tienda(tienda, datos):
     plt.close()
 
     return {'tienda': tienda, 'grafico': image_base64}
+
+def analisisModelo(request):
+    # Consultar los datos de inventario
+    inventarios_data = InvDet.objects.values('idInventario', 'sku', 'modelo', 'cantidad')
+
+    # Convertir los datos a un DataFrame
+    inventarios_df = pd.DataFrame(list(inventarios_data))
+
+    if not inventarios_df.empty:
+        # Extraer el modelo (primeros 9 dígitos del SKU)
+        inventarios_df['modelo'] = inventarios_df['sku'].apply(lambda x: str(x)[:9])
+        
+        # Excluir los modelos que comiencen con 'M'
+        inventarios_df = inventarios_df[~inventarios_df['modelo'].str.startswith('M')]
+
+        # Calcular el stock total por modelo
+        modelos_resumen = inventarios_df.groupby('modelo')['cantidad'].sum().sort_values(ascending=False)
+
+        # Obtener los 80 modelos con más stock
+        top_modelos = modelos_resumen.head(80)
+    else:
+        modelos_resumen = pd.Series([])
+        top_modelos = pd.Series([])
+
+    # Crear un gráfico de barras para los 80 modelos con más stock
+    def create_chart(data, title, xlabel, ylabel, color):
+        if data.empty:
+            return None  # Retornar None si no hay datos
+        fig, ax = plt.subplots(figsize=(12, 8))
+        data.plot(kind='bar', ax=ax, color=color)
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        plt.xticks(rotation=45, fontsize=10)
+        plt.tight_layout()
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+        chart = base64.b64encode(buf.getvalue()).decode('utf-8')
+        buf.close()
+        return chart
+
+    top_modelos_chart = create_chart(
+        top_modelos, 'Modelos con Más Stock (Excluyendo los que empiezan con "M")',
+        'Modelos', 'Cantidad de Stock', 'green'
+    )
+
+    # Pasar los datos al template
+    context = {
+        'top_modelos_chart': top_modelos_chart,
+        'top_modelos': top_modelos.to_dict() if not top_modelos.empty else {},
+    }
+
+    return render(request, 'analisis_modelo.html', context)
+
+
+def detectar_anomalias(request):
+    # Filtrar los inventarios de los últimos 3 meses
+    tres_meses_atras = timezone.now() - timedelta(days=365)
+    
+    # Obtener los datos de inventario de los últimos 3 meses usando 'fecha_creacion' en lugar de 'create_date'
+    inventarios_data = InvDet.objects.filter(fecha_creacion__gte=tres_meses_atras).values('sku', 'cantidad', 'fecha_creacion')
+    inventarios_df = pd.DataFrame(list(inventarios_data))
+
+    # Asegurarse de que la columna 'cantidad' sea numérica
+    inventarios_df['cantidad'] = pd.to_numeric(inventarios_df['cantidad'], errors='coerce')
+
+    # Crear el modelo de detección de anomalías
+    model = IsolationForest(contamination=0.05)  # Ajusta el valor de contamination si es necesario
+    model.fit(inventarios_df[['cantidad']])
+
+    # Hacer predicciones sobre los datos
+    predicciones = model.predict(inventarios_df[['cantidad']])
+    inventarios_df['anomalía'] = predicciones
+
+    # Filtrar solo las anomalías (predicción == -1)
+    anomalos_df = inventarios_df[inventarios_df['anomalía'] == -1]
+
+    # Preprocesar el estado legible de las anomalías
+    anomalos_df['estado'] = 'Anómalo'
+
+    # Convertir los datos a diccionario para pasarlos al template
+    context = {
+        'anomalos': anomalos_df.to_dict(orient='records'),  # Pasar solo los registros anómalos
+    }
+
+    # Renderizar el template
+    return render(request, 'anomalias.html', context)
