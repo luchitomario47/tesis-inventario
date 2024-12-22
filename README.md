@@ -75,10 +75,6 @@ Realiza tus cambios y haz un commit (git commit -am 'Agregada nueva funcionalida
 Haz push a la rama (git push origin feature/nueva-funcionalidad).
 Abre un Pull Request para que tus cambios sean revisados.
 
-###Licencia
-
-Este proyecto está bajo la Licencia MIT - consulta el archivo LICENSE para más detalles.
-
 ###Agradecimientos
 
 Este proyecto no habría sido posible sin el apoyo y la inspiración de mis seres queridos: mi madre, padre, hermanas, abuelos, tías, primas y mi gatita Tini. A todos ellos, mi más sincero agradecimiento por su constante apoyo durante este proceso.
