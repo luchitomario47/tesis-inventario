@@ -85,16 +85,3 @@ Este proyecto no habría sido posible sin el apoyo y la inspiración de mis sere
 
 *Este proyecto fue realizado como parte de mi tesis de Universidad Andres Bello.*
 
-
-### Explicación de las secciones:
-
-1. **Descripción**: Un resumen sobre lo que hace el proyecto. Es importante para que el usuario entienda rápidamente de qué trata el sistema.
-2. **Características**: Sección con las principales funcionalidades del sistema.
-3. **Instalación**: Guía detallada para instalar y configurar el proyecto en tu máquina local, incluyendo los requisitos, pasos y comandos necesarios.
-4. **Uso**: Explicación de cómo utilizar el sistema una vez instalado.
-5. **Contribuciones**: Instrucciones sobre cómo contribuir al proyecto, con detalles sobre cómo hacer un *fork* y crear un *pull request*.
-6. **Licencia**: Información sobre la licencia que estás utilizando para tu proyecto. Si usas la Licencia MIT, este es el texto que debes incluir.
-7. **Agradecimientos**: Un agradecimiento a las personas que te apoyaron en el proyecto.
-8. **Notas adicionales**: Sección final en donde puedes incluir detalles sobre tu universidad o cualquier otra información adicional.
-
-Este archivo `README.md` está completamente listo para que lo pongas en tu repositorio de GitHub. Solo cópialo y pégalo en el archivo `README.md` en tu repositorio. ¡Espero que te sea útil!
