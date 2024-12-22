@@ -9,9 +9,11 @@ urlpatterns = [
     path('reportes/', views.reportes, name='reportes'),
     path('detalle-inventario/<int:idInventario>/', views.reporte_detalles, name='reporte_detalles'),
     path('analisisVentasAgno/', views.analisisVentasAgno, name='analisisVentasAgno'),
-    path('analisisVentasMes/', views.analizar_datos_mensual, name='analisisVentasMes'),
+    path('analisisVentasMes/', views.analizarDatosMensual, name='analisisVentasMes'),
     path('analisisInventarios/', views.analisisInventarios, name='analisisInventarios'),
     path('dashboardTiendas/', views.dashboard_tiendas, name='dashboardTiendas'),
     path('analisisModelo/', views.analisisModelo, name='analisisModelo'),
     path('detectarAnomalias/', views.detectar_anomalias, name='detectar_anomalias'),
+    path('analisis-ventas/', views.analisisVentasAgno, name='analisis_ventas'),
+    path('analisis-inventarios/', views.analisisInventarios, name='analisis_inventarios'),
     ]

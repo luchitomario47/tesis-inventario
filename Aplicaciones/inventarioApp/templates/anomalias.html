@@ -57,7 +57,6 @@
         <thead>
             <tr>
                 <th>SKU</th>
-                <th>Cantidad</th>
                 <th>Estado</th>
             </tr>
         </thead>
@@ -65,7 +64,6 @@
             {% for inventario in anomalos %}
                 <tr>
                     <td>{{ inventario.sku }}</td>
-                    <td>{{ inventario.cantidad }}</td>
                     <td>
                         {% if inventario.estado == 'Anómalo' %}
                             <span class="estado-anomalo">{{ inventario.estado }}</span>

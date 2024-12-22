@@ -104,8 +104,6 @@ def reportes(request):
         'page_obj': page_obj,
     })
 
-
-
 def reporte_detalles(request, idInventario):
     # Obtener el inventario
     inventario = get_object_or_404(InvCab, idInventario=idInventario)
@@ -149,11 +147,9 @@ def reporte_detalles(request, idInventario):
     })
 
 def analisisVentasAgno(request):
-
     # Definir rango de fechas para el último año
     hoy = datetime.now()
     hace_un_anio = hoy - timedelta(days=365)
-
     # Consultar datos de ventas del último año
     ventas_data = repositorioVentasTienda.objects.filter(
         create_date__range=[hace_un_anio, hoy]
@@ -186,44 +182,36 @@ def analisisVentasAgno(request):
         chart = base64.b64encode(buf.getvalue()).decode('utf-8')
         buf.close()
         return chart
-
     # Generar gráficos de ventas
     ventas_chart = create_chart(
         ventas_resumen, 'Ventas por Tienda (Último Año)', 'Tiendas', 'Ventas Totales', 'green'
     )
-
     # Obtener las tiendas que más y menos han vendido
     top_tiendas = ventas_resumen.head(5).to_dict() if not ventas_resumen.empty else {}
     low_tiendas = ventas_resumen.tail(5).to_dict() if not ventas_resumen.empty else {}
-
     # Pasar los datos al template
     context = {
         'ventas_chart': ventas_chart,
         'top_tiendas': top_tiendas,
         'low_tiendas': low_tiendas,
     }
-
     return render(request, 'analisis_ventas_ultimo_ano.html', context)
 
 
-def analizar_datos_mensual(request):
+def analizarDatosMensual(request):
     from datetime import datetime
     hoy = datetime.now()
     mes_seleccionado = hoy.month
     anio_seleccionado = hoy.year
-
     if request.method == 'GET' and 'mes' in request.GET and 'anio' in request.GET:
         mes_seleccionado = int(request.GET['mes'])
         anio_seleccionado = int(request.GET['anio'])
-
     # Filtrar las ventas del mes y año seleccionados
     ventas_data = repositorioVentasTienda.objects.filter(
         create_date__year=anio_seleccionado,
         create_date__month=mes_seleccionado
     ).values('store_code', 'total_amount')
-
     ventas_df = pd.DataFrame(list(ventas_data))
-
     if not ventas_df.empty:
         ventas_df['total_amount'] = pd.to_numeric(ventas_df['total_amount'], errors='coerce')
         ventas_resumen = ventas_df.groupby('store_code')['total_amount'].sum().sort_values(ascending=False)
@@ -246,7 +234,6 @@ def analizar_datos_mensual(request):
         chart = base64.b64encode(buf.getvalue()).decode('utf-8')
         buf.close()
         return chart
-
     ventas_chart = create_chart(
         ventas_resumen,
         f'Ventas por Tienda - {mes_seleccionado}/{anio_seleccionado}',
@@ -254,7 +241,6 @@ def analizar_datos_mensual(request):
         'Ventas Totales',
         'blue'
     )
-
     context = {
         'ventas_chart': ventas_chart,
         'ventas_resumen': ventas_resumen.to_dict() if not ventas_resumen.empty else {},
@@ -263,7 +249,6 @@ def analizar_datos_mensual(request):
         'meses': range(1, 13),  # Agrega el rango de meses
         'anios': range(2020, 2030),  # Agrega el rango de años
     }
-
     return render(request, 'analisis_ventas_mensual.html', context)
 
 
@@ -331,8 +316,6 @@ def generar_grafico_barras(datos):
     plt.close()
 
     return image_base64
-
-
 
 def dashboard_tiendas(request):
     # Obtener todos los inventarios agrupados por idInventario
@@ -460,18 +443,18 @@ def analisisModelo(request):
 
 
 def detectar_anomalias(request):
-    # Filtrar los inventarios de los últimos 3 meses
-    tres_meses_atras = timezone.now() - timedelta(days=365)
+    # Filtrar los inventarios de los último año
+    ultimo_anio = timezone.now() - timedelta(days=365)
     
-    # Obtener los datos de inventario de los últimos 3 meses usando 'fecha_creacion' en lugar de 'create_date'
-    inventarios_data = InvDet.objects.filter(fecha_creacion__gte=tres_meses_atras).values('sku', 'cantidad', 'fecha_creacion')
+    # Obtener los datos de inventario de los últimoaño usando 'fecha_creacion' en lugar de 'create_date'
+    inventarios_data = InvDet.objects.filter(fecha_creacion__gte=ultimo_anio).values('sku', 'cantidad', 'fecha_creacion')
     inventarios_df = pd.DataFrame(list(inventarios_data))
 
     # Asegurarse de que la columna 'cantidad' sea numérica
     inventarios_df['cantidad'] = pd.to_numeric(inventarios_df['cantidad'], errors='coerce')
 
     # Crear el modelo de detección de anomalías
-    model = IsolationForest(contamination=0.05)  # Ajusta el valor de contamination si es necesario
+    model = IsolationForest(contamination=0.05, random_state=42)  # Ajusta el valor de contamination si es necesario
     model.fit(inventarios_df[['cantidad']])
 
     # Hacer predicciones sobre los datos
@@ -491,3 +474,4 @@ def detectar_anomalias(request):
 
     # Renderizar el template
     return render(request, 'anomalias.html', context)
+
